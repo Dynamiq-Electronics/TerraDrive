@@ -82,37 +82,3 @@ void loop() {
 // }
 
 // void loop(){}
-
-
-
-
-
-
-
-
-
-
-
-
-// #include <Arduino.h>
-// #include <TerraDrive.h>
-// #include <Adafruit_NeoPixel.h>
-
-// TerraDrive m_terraDrive{};
-
-// void setup() {
-//   Serial.begin(115200);
-//   m_terraDrive.init();
-//   m_terraDrive.setEnableMotors(true);
-//   Serial.println("Enter speed (-100 to 100):");
-// }
-
-// void loop() {
-//   if (Serial.available()) {
-//     int speed = Serial.parseInt();
-//     Serial.flush();
-//     m_terraDrive.setLeftMotor(speed);
-//     m_terraDrive.setRightMotor(speed);
-//     Serial.printf("Speed set to %d\n", speed);
-//   }
-// }

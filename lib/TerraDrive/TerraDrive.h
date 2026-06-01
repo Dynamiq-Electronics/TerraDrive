@@ -1,8 +1,8 @@
 #pragma once
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
-#include "driver/mcpwm_prelude.h"
-#include "esp_adc/adc_oneshot.h"
+#include <driver/mcpwm_prelude.h>
+
 
 namespace Pins {
     constexpr int LIPO_SENSE{17};
@@ -37,7 +37,6 @@ namespace MotorCfg {
     constexpr uint32_t PWM_FREQ_HZ       = 4000;
     constexpr uint32_t PWM_PERIOD_TICKS  = PWM_RESOLUTION_HZ / PWM_FREQ_HZ; // 10000
     constexpr uint32_t PWM_PEAK_TICKS = MotorCfg::PWM_PERIOD_TICKS / 2; // 10000
-
 
     constexpr float SENSE_RESISTOR = 1500.0f;
 }
@@ -75,7 +74,7 @@ class TerraDrive {
         void setRightMotor(float output);
         void pinMode5V(Pins5v pin, uint8_t state);
 
-        float getLipoVoltage() const { return m_lipoVoltage; }
+        // float getLipoVoltage() const { return m_lipoVoltage; }
 
         float getLeftCurrent()  const { return m_leftFiltered;  }
         float getRightCurrent() const { return m_rightFiltered; }
@@ -85,42 +84,25 @@ class TerraDrive {
         Adafruit_NeoPixel& getNeoPixel() { return m_pixels; }
 
     private:
-        // MCPWM handles
-        mcpwm_timer_handle_t m_pwmTimer   = nullptr;
-        mcpwm_oper_handle_t  m_leftOper   = nullptr;
-        mcpwm_oper_handle_t  m_rightOper  = nullptr;
-        mcpwm_cmpr_handle_t  m_leftCmpr1  = nullptr;  // LEFT_IN1
-        mcpwm_cmpr_handle_t  m_leftCmpr2  = nullptr;  // LEFT_IN2
-        mcpwm_cmpr_handle_t  m_rightCmpr1 = nullptr;  // RIGHT_IN1
-        mcpwm_cmpr_handle_t  m_rightCmpr2 = nullptr;  // RIGHT_IN2
-        mcpwm_gen_handle_t   m_leftGen1   = nullptr;
-        mcpwm_gen_handle_t   m_leftGen2   = nullptr;
-        mcpwm_gen_handle_t   m_rightGen1  = nullptr;
-        mcpwm_gen_handle_t   m_rightGen2  = nullptr;
-
-        // ADC
-        adc_oneshot_unit_handle_t m_adcHandle    = nullptr;
-        volatile bool             m_sampleFlag   = false;
-        float                     m_leftCurrentA = 0.0f;
-        float                     m_rightCurrentA= 0.0f;
-        float                     m_lipoVoltage  = 0.0f;
 
         void _initMCPWM();
-        void _initADC();
-        void _initGenerator(mcpwm_gen_handle_t&  gen,
-                            mcpwm_oper_handle_t   oper,
-                            mcpwm_cmpr_handle_t   cmpr,
-                            int                   gpio);
-        void _setMotorOutput(mcpwm_cmpr_handle_t cmpr1, mcpwm_cmpr_handle_t cmpr2,
-                     mcpwm_gen_handle_t gen1, mcpwm_gen_handle_t gen2,
-                     float output);
-        float _rawToAmps(int raw) const;
+        void _setMotorOutput(mcpwm_cmpr_handle_t cmpr,
+                                  mcpwm_gen_handle_t  gen1,
+                                  mcpwm_gen_handle_t  gen2,
+                                  float output);
 
-        static bool IRAM_ATTR _onTimerPeak(mcpwm_timer_handle_t              timer,
-                                           const mcpwm_timer_event_data_t*   data,
-                                           void*                             ctx);
+        // MCPWM 
+        mcpwm_timer_handle_t m_pwmTimer = NULL;
+        mcpwm_oper_handle_t m_leftOper = NULL;
+        mcpwm_oper_handle_t m_rightOper = NULL;
+        mcpwm_cmpr_handle_t m_leftCmpr = NULL;
+        mcpwm_cmpr_handle_t m_rightCmpr = NULL;
+        mcpwm_gen_handle_t m_rightGenFwd = NULL; // forward PWM signal
+        mcpwm_gen_handle_t m_leftGenFwd = NULL;
+        mcpwm_gen_handle_t m_rightGenRvs = NULL; // Reverse PWM signal
+        mcpwm_gen_handle_t m_leftGenRvs = NULL;
 
-
+        // ADC filter
         float m_leftFiltered = 0.0f;
         float m_rightFiltered = 0.0f;
         static constexpr float ALPHA = 0.15f;  // lower = smoother, slower
