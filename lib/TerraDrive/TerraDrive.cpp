@@ -10,14 +10,60 @@ void TerraDrive::init() {
 
     pinMode(Pins::LIPO_SENSE, INPUT);
 
+    pinMode(Pins::RIGHT_CURRENT_SENSE, INPUT);
+    pinMode(Pins::LEFT_CURRENT_SENSE, INPUT);
+
     pinMode(Pins::DIR_PIN2,  OUTPUT);
     pinMode(Pins::DIR_PIN41, OUTPUT);
     pinMode(Pins::DIR_PIN39, OUTPUT);
     pinMode(Pins::DIR_PIN48, OUTPUT);
 
+
     m_pixels.begin();
     _initMCPWM();
+    _initADC();
+    analogReadResolution(12);
 }
+
+void TerraDrive::_initADC() {
+    // init ADC2 unit
+    adc_oneshot_unit_init_cfg_t unitCfg = {};
+    unitCfg.unit_id = ADC_UNIT_2;
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&unitCfg, &m_adcHandle));
+
+    // channel config
+    adc_oneshot_chan_cfg_t chanCfg = {};
+    chanCfg.atten    = ADC_ATTEN_DB_0;   // 100mV - 950mV range this allows for motors up to 1.4A to be read. Use 12DB atten for higher amps
+    chanCfg.bitwidth = ADC_BITWIDTH_12;
+
+    // Lipo voltage sensor
+    adc_oneshot_chan_cfg_t lipoChanCfg = {};
+    chanCfg.atten    = ADC_ATTEN_DB_12;
+    chanCfg.bitwidth = ADC_BITWIDTH_12;
+
+    // GPIO18 = ADC2 CH7, GPIO14 = ADC2 CH3, GPIO17 = ADC2 CH6
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(m_adcHandle, ADC_CHANNEL_7, &chanCfg));
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(m_adcHandle, ADC_CHANNEL_3, &chanCfg));
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(m_adcHandle, ADC_CHANNEL_6, &lipoChanCfg));
+
+    // calibration for left (CH7)
+    adc_cali_curve_fitting_config_t caliCfg = {};
+    caliCfg.unit_id  = ADC_UNIT_2;
+    caliCfg.atten    = ADC_ATTEN_DB_0;
+    caliCfg.bitwidth = ADC_BITWIDTH_12;
+
+    caliCfg.chan = ADC_CHANNEL_7;
+    ESP_ERROR_CHECK(adc_cali_create_scheme_curve_fitting(&caliCfg, &m_leftCaliHandle));
+
+    caliCfg.chan = ADC_CHANNEL_3;
+    ESP_ERROR_CHECK(adc_cali_create_scheme_curve_fitting(&caliCfg, &m_rightCaliHandle));
+
+    caliCfg.atten = ADC_ATTEN_DB_12;
+    caliCfg.chan = ADC_CHANNEL_6;
+    ESP_ERROR_CHECK(adc_cali_create_scheme_curve_fitting(&caliCfg, &m_lipoCaliHandle));
+
+}
+
 
 void TerraDrive::_initMCPWM() {
     // Config class for the PWM timer
@@ -100,32 +146,6 @@ void TerraDrive::_initMCPWM() {
     mcpwm_timer_start_stop(m_pwmTimer, MCPWM_TIMER_START_NO_STOP);
 }
 
-// ─── update() ────────────────────────────────────────────────────────────────
-void TerraDrive::update() {
-    // if (!m_sampleFlag) return;
-    // m_sampleFlag = false;
-
-    // int rawLeft = 0, rawRight = 0, lipo = 0;
-    // adc_oneshot_read(m_adcHandle, ADC_CHANNEL_7, &rawLeft);
-    // adc_oneshot_read(m_adcHandle, ADC_CHANNEL_3, &rawRight);
-    // adc_oneshot_read(m_adcHandle, ADC_CHANNEL_6, &lipo);
-
-    // m_lipoVoltage =  (lipo / 4095.0f) * 36.3f; // 36.3 -> 3v3 voltage divider math
-    // // m_leftCurrentA  = _rawToAmps(rawLeft);
-    // // m_rightCurrentA = _rawToAmps(rawRight);
-
-    // float rawLeftA = _rawToAmps(rawLeft);
-    // m_leftFiltered += ALPHA * (rawLeftA - m_leftFiltered);
-    // float rawRightA = _rawToAmps(rawRight);
-    // m_rightFiltered += ALPHA * (rawRightA - m_rightFiltered);
-
-}
-
-// float TerraDrive::_rawToAmps(int raw) const {
-//     float voltage = (raw / 4095.0f) * 3.3f;
-//     return voltage * 1000.0f / MotorCfg::SENSE_RESISTOR;
-// }
-
 // ─── Motor control ────────────────────────────────────────────────────────────
 void TerraDrive::_setMotorOutput(mcpwm_cmpr_handle_t cmpr,
                                   mcpwm_gen_handle_t  gen1,
@@ -153,7 +173,6 @@ void TerraDrive::_setMotorOutput(mcpwm_cmpr_handle_t cmpr,
         mcpwm_generator_set_force_level(gen2, 1, true);
     }
 }
-
 
 void TerraDrive::setLeftMotor(float output) {
     // Left motor wired inverted — negate to normalise direction
@@ -187,3 +206,11 @@ void TerraDrive::pinMode5V(Pins5v pin, uint8_t state) {
         digitalWrite(getDirPin(static_cast<int>(pin)), LOW);
     }
 }
+
+float TerraDrive::_readCurrentMilliVolts(adc_channel_t channel, adc_cali_handle_t cali) const {
+    int raw = 0;
+    int millivolts = 0;
+    adc_oneshot_read(m_adcHandle, channel, &raw);
+    adc_cali_raw_to_voltage(cali, raw, &millivolts);
+    return millivolts;
+};

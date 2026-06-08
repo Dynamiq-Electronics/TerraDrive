@@ -1,3 +1,7 @@
+// The following code will print out the distance read from the ultrasonic sensor
+// The neopixel colour will change from green to red as the ultrasonic sensors detects distances from 0 - 40cm
+// The motor speed will also be proportionally set to 0 - 100 depending on the distance
+
 
 #include <Arduino.h>
 #include <TerraDrive.h>
