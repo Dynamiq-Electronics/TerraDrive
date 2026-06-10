@@ -69,7 +69,7 @@ constexpr int getDirPin(int gpio) {
 class TerraDrive {
     public:
         TerraDrive() = default;
-        void init();
+        void init(bool disableADC = false);
 
         void setEnableMotors(bool enable);
         void setLeftMotor(float output);
@@ -114,10 +114,7 @@ class TerraDrive {
         adc_cali_handle_t m_rightCaliHandle;
         adc_cali_handle_t m_lipoCaliHandle;
 
-        // ADC filter
-        float m_leftFiltered = 0.0f;
-        float m_rightFiltered = 0.0f;
-        static constexpr float ALPHA = 0.15f;  // lower = smoother, slower
+        bool m_isAdcDisabled;
 
         static constexpr int NUM_PIXELS{2};
         Adafruit_NeoPixel m_pixels{NUM_PIXELS, Pins::NEO_PIN, NEO_GRB + NEO_KHZ800};

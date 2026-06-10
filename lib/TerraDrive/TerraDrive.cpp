@@ -1,7 +1,7 @@
 #include "TerraDrive.h"
 
 // ─── Init ────────────────────────────────────────────────────────────────────
-void TerraDrive::init() {
+void TerraDrive::init(bool disableAdc = false) {
     pinMode(Pins::LEFT_MOTOR_SLEEP,  OUTPUT);
     pinMode(Pins::RIGHT_MOTOR_SLEEP, OUTPUT);
 
@@ -21,7 +21,7 @@ void TerraDrive::init() {
 
     m_pixels.begin();
     _initMCPWM();
-    _initADC();
+    if (!disableAdc) _initADC();
     analogReadResolution(12);
 }
 
@@ -175,11 +175,9 @@ void TerraDrive::_setMotorOutput(mcpwm_cmpr_handle_t cmpr,
 }
 
 void TerraDrive::setLeftMotor(float output) {
-    // Left motor wired inverted — negate to normalise direction
     _setMotorOutput(m_leftCmpr, m_leftGenFwd,  m_leftGenRvs, output);
 }
 void TerraDrive::setRightMotor(float output) {
-    // Left motor wired inverted — negate to normalise direction
     _setMotorOutput(m_rightCmpr, m_rightGenFwd,  m_rightGenRvs, output);
 }
 
@@ -208,6 +206,7 @@ void TerraDrive::pinMode5V(Pins5v pin, uint8_t state) {
 }
 
 float TerraDrive::_readCurrentMilliVolts(adc_channel_t channel, adc_cali_handle_t cali) const {
+    if (m_isAdcDisabled) return -1.0f;
     int raw = 0;
     int millivolts = 0;
     adc_oneshot_read(m_adcHandle, channel, &raw);
