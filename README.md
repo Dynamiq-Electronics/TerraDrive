@@ -18,7 +18,7 @@ This repository contains the core C++ library required to interface with the Ter
   * 4x 3.3V Native ESP32-S3 Logic Pins (Built in ADC1 access)
 * **Status LEDs:** 2x On-board WS2812B NeoPixels (GRB, 800kHz).
 
-**Board schematics are provided in `hardware`**
+**CAD & Board schematics are provided in `hardware`**
 
 ## ⚡ Using the hardware
 
